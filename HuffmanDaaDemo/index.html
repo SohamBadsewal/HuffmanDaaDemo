@@ -1,0 +1,1065 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Huffman Coding — Greedy Algorithm</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500&family=Space+Mono:wght@400;700&family=Doto:ROND,wght@0,100..900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --black:#000000;--surface:#111111;--surface-raised:#1a1a1a;
+  --border:#222222;--border-vis:#333333;
+  --text-disabled:#666666;--text-sec:#999999;
+  --text-pri:#E8E8E8;--text-disp:#FFFFFF;
+  --cA:#A855F7;--cB:#EF4444;--cC:#3B82F6;--cD:#F59E0B;--cI:#6B7280;
+}
+html{scroll-behavior:smooth}
+body{background:var(--black);color:var(--text-pri);font-family:'Space Grotesk',system-ui,sans-serif;font-size:15px;line-height:1.7;overflow-x:hidden}
+
+/* ── HERO ─────────────────────────────────────────────── */
+#hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 40px;text-align:center;position:relative;transition:opacity 500ms,transform 500ms}
+#hero.hidden{opacity:0;pointer-events:none;transform:translateY(-40px)}
+.hero-label{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.08em;color:var(--text-sec);text-transform:uppercase;position:absolute;top:32px;left:32px}
+#hero h1{font-family:'Doto','Space Mono',monospace;font-size:72px;font-weight:400;color:var(--text-disp);letter-spacing:.04em;line-height:1;margin-bottom:20px}
+.hero-sub{font-size:16px;color:var(--text-sec);font-weight:300;margin-bottom:48px;max-width:500px}
+.string-display{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:24px;max-width:640px}
+.char-cell{width:42px;height:42px;border:1px solid rgba(255,255,255,.5);display:flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;font-size:14px;color:var(--text-disp);background:var(--black)}
+.freq-info{margin-bottom:48px}
+.freq-info p{font-family:'Space Mono',monospace;font-size:12px;color:var(--text-sec);line-height:2;letter-spacing:.02em}
+#startBtn{font-family:'Space Mono',monospace;font-size:13px;letter-spacing:.06em;color:var(--text-disp);background:var(--black);border:1px solid var(--text-disp);border-radius:0;padding:12px 32px;cursor:pointer;text-transform:uppercase;transition:background 200ms,color 200ms;min-height:44px}
+#startBtn:hover{background:var(--text-disp);color:var(--black)}
+
+/* ── APP CONTAINER ────────────────────────────────────── */
+#app{display:none;position:relative}
+#app.active{display:block}
+
+/* ── TREE PANEL (fixed left) ──────────────────────────── */
+#treePanel{position:fixed;top:0;left:0;width:50vw;height:100vh;background:var(--black);border-right:1px solid var(--border);display:flex;align-items:center;justify-content:center;z-index:10;transition:transform 600ms cubic-bezier(.4,0,.2,1);will-change:transform}
+#treePanel.exiting{transform:translateX(-50vw)}
+#treeSvg{width:100%;height:100%;max-width:600px;max-height:500px}
+
+/* ── RIGHT CONTENT ────────────────────────────────────── */
+#rightContent{margin-left:50vw;width:50vw;background:var(--black);transition:margin-left 600ms cubic-bezier(.4,0,.2,1),width 600ms cubic-bezier(.4,0,.2,1);will-change:margin-left,width}
+#rightContent.expanded{margin-left:0;width:100%}
+.right-panel{min-height:100vh;padding:60px 48px;border-bottom:1px solid var(--border)}
+.panel-label{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.08em;color:var(--text-sec);text-transform:uppercase;margin-bottom:24px}
+.right-panel h2{font-family:'Space Grotesk',sans-serif;font-size:32px;font-weight:400;color:var(--text-disp);margin-bottom:40px;letter-spacing:-.01em}
+
+/* ── CODE BLOCK ───────────────────────────────────────── */
+#codeBlock{background:var(--black);border:1px solid rgba(255,255,255,.1);padding:32px;font-family:'Space Mono',monospace;font-size:12px;line-height:1.8;overflow:auto;position:relative;white-space:pre;max-height:70vh}
+.kw{color:#60A5FA}.fn{color:#F59E0B}.str{color:#A855F7}.cm{color:#4B5563}.nm{color:#E8E8E8}
+#cursor{display:inline-block;width:2px;height:1.1em;background:var(--text-disp);vertical-align:text-bottom;animation:blink 800ms step-end infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
+
+/* ── ALGORITHM STEPS ──────────────────────────────────── */
+.steps-list{list-style:none;padding:0;margin-bottom:64px}
+.step-item{position:relative;padding:32px 0 32px 88px;border-bottom:1px solid var(--border);opacity:0;transform:translateY(20px);transition:opacity 400ms ease-out,transform 400ms ease-out}
+.step-item.vis{opacity:1;transform:translateY(0)}
+.step-num{position:absolute;left:0;top:20px;font-family:'Space Mono',monospace;font-size:56px;font-weight:700;color:var(--border-vis);line-height:1;user-select:none}
+.step-text{position:relative;font-size:15px;color:var(--text-pri);line-height:1.8}
+.pq-section{margin-top:48px}
+.pq-heading{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.08em;color:var(--text-sec);text-transform:uppercase;margin-bottom:24px}
+.pq-row{display:flex;align-items:center;gap:4px;margin-bottom:14px;opacity:0;transition:opacity 400ms ease-out}
+.pq-row.vis{opacity:1}
+.pq-row-lbl{font-family:'Space Mono',monospace;font-size:11px;color:var(--text-disabled);min-width:90px;letter-spacing:.04em}
+.pq-cell{border:1px solid rgba(255,255,255,.3);padding:8px 14px;font-family:'Space Mono',monospace;font-size:12px;color:var(--text-disp);display:flex;align-items:center;gap:7px;background:var(--black)}
+.pq-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+
+/* ── ENCODING TABLE ───────────────────────────────────── */
+.table-sub{font-size:15px;color:var(--text-sec);margin-bottom:32px;line-height:1.7}
+.enc-table{width:100%;border-collapse:collapse;margin-bottom:24px}
+.enc-table th{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.08em;color:var(--text-sec);text-transform:uppercase;text-align:left;padding:12px 16px;border-bottom:1px solid var(--border-vis);font-weight:400}
+.enc-table td{padding:16px;font-size:15px;color:var(--text-pri);border-bottom:1px solid rgba(255,255,255,.06)}
+.enc-table td.mono{font-family:'Space Mono',monospace;font-size:14px}
+.char-row{cursor:pointer;transition:background 150ms,opacity 300ms;position:relative}
+.char-row::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px}
+.char-row[data-char="A"]::before{background:var(--cA)}
+.char-row[data-char="B"]::before{background:var(--cB)}
+.char-row[data-char="C"]::before{background:var(--cC)}
+.char-row[data-char="D"]::before{background:var(--cD)}
+.char-row:hover{background:rgba(255,255,255,.04)}
+.table-footer{font-family:'Space Mono',monospace;font-size:11px;color:var(--text-disabled);line-height:1.9;padding:16px 0;letter-spacing:.02em}
+
+/* ── COMPRESSOR ───────────────────────────────────────── */
+#compressorSection{background:var(--black);padding:80px;width:100%}
+.section-label{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.08em;color:var(--text-sec);text-transform:uppercase;margin-bottom:24px}
+#compressorSection h2{font-family:'Space Grotesk',sans-serif;font-weight:300;font-size:48px;color:var(--text-disp);margin-bottom:16px;letter-spacing:-.02em}
+.comp-sub{font-size:16px;color:var(--text-sec);margin-bottom:64px;max-width:620px}
+.comp-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.comp-card{background:var(--black);border:1px solid rgba(255,255,255,.12);padding:32px;transition:border-color 200ms}
+.comp-card:hover{border-color:rgba(255,255,255,.4)}
+.card-type{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.08em;color:var(--text-sec);text-transform:uppercase;margin-bottom:20px}
+.drop-zone{border:1px dashed rgba(255,255,255,.2);min-height:100px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:border-color 200ms,background 200ms;margin-bottom:20px;position:relative}
+.drop-zone:hover,.drop-zone.drag-over{border-color:rgba(255,255,255,.5);background:rgba(255,255,255,.02)}
+.drop-zone input[type="file"]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.dz-text{font-family:'Space Mono',monospace;font-size:11px;color:var(--text-disabled);text-align:center;pointer-events:none;letter-spacing:.04em;line-height:1.7}
+.file-info{display:none;margin-bottom:12px}
+.file-info.vis{display:block}
+.file-name-disp{font-family:'Space Mono',monospace;font-size:11px;color:var(--text-sec);margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.file-sz{font-family:'Space Mono',monospace;font-size:11px;color:var(--text-disabled)}
+.prog-wrap{display:none;height:2px;background:rgba(255,255,255,.1);margin-bottom:20px}
+.prog-wrap.vis{display:block}
+.prog-bar{height:100%;background:var(--text-disp);width:0%;transition:width 100ms linear}
+.result-box{display:none}
+.result-box.vis{display:block}
+.result-row{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border)}
+.res-lbl{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:.06em;color:var(--text-sec);text-transform:uppercase}
+.res-val{font-family:'Space Mono',monospace;font-size:12px;color:var(--text-disp)}
+.res-val.green{color:#4A9E5C}.res-val.yellow{color:#D4A843}.res-val.gray{color:var(--text-sec)}
+.dl-btn{display:inline-block;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.06em;color:var(--text-disp);background:var(--black);border:1px solid var(--text-disp);border-radius:0;padding:10px 18px;cursor:pointer;text-transform:uppercase;text-decoration:none;transition:background 200ms,color 200ms;margin-top:14px;min-height:40px}
+.dl-btn:hover{background:var(--text-disp);color:var(--black)}
+.hist-wrap{margin-top:20px}
+.hist-lbl{font-family:'Space Mono',monospace;font-size:10px;color:var(--text-disabled);letter-spacing:.04em;margin-top:4px}
+.already-note{font-family:'Space Mono',monospace;font-size:10px;color:var(--text-sec);margin-top:10px;line-height:1.7}
+
+/* ── SVG / TREE ANIMATIONS ────────────────────────────── */
+@keyframes nodeAppear{from{transform:scale(0);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes glowPulse{from{opacity:.7}to{opacity:1}}
+/* .node-outer holds the id/position/filter — never animated */
+.node-outer{transition:opacity 300ms,filter 300ms}
+/* .node-group is the inner animated shell, scales from center (0,0 = parent cx,cy) */
+.node-group{animation:nodeAppear 300ms ease-out both;transform-origin:0 0}
+.edge-path{transition:opacity 300ms,filter 300ms}
+
+/* ── SCROLL FADE ──────────────────────────────────────── */
+.fade-in{opacity:0;transform:translateY(24px);transition:opacity 400ms ease-out,transform 400ms ease-out}
+.fade-in.vis{opacity:1;transform:translateY(0)}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════
+     HERO
+═══════════════════════════════════════════════════════ -->
+<section id="hero">
+  <div class="hero-label">HUFFMAN CODING — GREEDY ALGORITHM</div>
+  <h1>Huffman Coding</h1>
+  <p class="hero-sub">Lossless data compression via optimal prefix-free binary trees.</p>
+  <div class="string-display" id="stringDisplay"></div>
+  <div class="freq-info">
+    <p>15 characters × 8 bits = 120 bits (unencoded)</p>
+    <p>Character frequencies: A=5, B=1, C=6, D=3</p>
+  </div>
+  <button id="startBtn">[ START ]</button>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════
+     APP (split + compressor)
+═══════════════════════════════════════════════════════ -->
+<div id="app">
+
+  <!-- LEFT: fixed tree -->
+  <div id="treePanel">
+    <svg id="treeSvg" viewBox="0 0 600 500" preserveAspectRatio="xMidYMid meet">
+      <defs id="svgDefs"></defs>
+      <g id="edgesGroup"></g>
+      <g id="labelsGroup"></g>
+      <g id="nodesGroup"></g>
+    </svg>
+  </div>
+
+  <!-- RIGHT: scrolling content -->
+  <div id="rightContent">
+
+    <!-- PANEL 1: C Code Typewriter -->
+    <div class="right-panel" id="panel1">
+      <div class="panel-label">IMPLEMENTATION</div>
+      <h2>Huffman Coding in C</h2>
+      <pre id="codeBlock"><code id="codeContent"><span id="cursor"></span></code></pre>
+    </div>
+
+    <!-- PANEL 2: Algorithm Steps -->
+    <div class="right-panel" id="panel2">
+      <div class="panel-label">ALGORITHM</div>
+      <h2>Construction Steps</h2>
+      <ul class="steps-list">
+        <li class="step-item" data-obs>
+          <span class="step-num">01</span>
+          <p class="step-text">Create a leaf node for each character. The leaf node contains the frequency of the character.</p>
+        </li>
+        <li class="step-item" data-obs>
+          <span class="step-num">02</span>
+          <p class="step-text">Arrange all nodes in increasing order of their frequency value. These are maintained in a priority queue Q.<br><br>For this example: Q = [B:1, D:3, A:5, C:6]</p>
+        </li>
+        <li class="step-item" data-obs>
+          <span class="step-num">03</span>
+          <p class="step-text">Extract the two minimum frequency nodes. Create a new internal node with frequency = sum of the two. Make them left and right children. Insert new node back into Q. Repeat until Q has one node.</p>
+        </li>
+        <li class="step-item" data-obs>
+          <span class="step-num">04</span>
+          <p class="step-text">The remaining single node is the root. The tree is the Huffman Tree.</p>
+        </li>
+      </ul>
+
+      <div class="pq-section">
+        <div class="pq-heading">PRIORITY QUEUE EVOLUTION</div>
+        <div class="pq-row" id="pq0">
+          <span class="pq-row-lbl">INITIAL</span>
+          <div class="pq-cell"><span class="pq-dot" style="background:var(--cB)"></span>B:1</div>
+          <div class="pq-cell"><span class="pq-dot" style="background:var(--cD)"></span>D:3</div>
+          <div class="pq-cell"><span class="pq-dot" style="background:var(--cA)"></span>A:5</div>
+          <div class="pq-cell"><span class="pq-dot" style="background:var(--cC)"></span>C:6</div>
+        </div>
+        <div class="pq-row" id="pq1">
+          <span class="pq-row-lbl">AFTER ITER 1</span>
+          <div class="pq-cell"><span class="pq-dot" style="background:var(--cI)"></span>*:4</div>
+          <div class="pq-cell"><span class="pq-dot" style="background:var(--cA)"></span>A:5</div>
+          <div class="pq-cell"><span class="pq-dot" style="background:var(--cC)"></span>C:6</div>
+        </div>
+        <div class="pq-row" id="pq2">
+          <span class="pq-row-lbl">AFTER ITER 2</span>
+          <div class="pq-cell"><span class="pq-dot" style="background:var(--cC)"></span>C:6</div>
+          <div class="pq-cell" style="min-width:80px"><span class="pq-dot" style="background:var(--cI)"></span>*:9</div>
+        </div>
+        <div class="pq-row" id="pq3">
+          <span class="pq-row-lbl">AFTER ITER 3</span>
+          <div class="pq-cell" style="min-width:100px"><span class="pq-dot" style="background:var(--cI)"></span>*:15</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PANEL 3: Encoding Table -->
+    <div class="right-panel" id="panel3">
+      <div class="panel-label">ENCODING TABLE</div>
+      <h2>Huffman Codes</h2>
+      <p class="table-sub">For each non-leaf node, assign 0 to the left edge and 1 to the right edge. The code for each character is the path from root to that leaf.</p>
+      <table class="enc-table">
+        <thead>
+          <tr>
+            <th>Character</th><th>Frequency</th><th>Code</th><th>Size</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="char-row" data-char="A"><td>A</td><td class="mono">5</td><td class="mono">11</td><td class="mono">5×2 = 10 bits</td></tr>
+          <tr class="char-row" data-char="B"><td>B</td><td class="mono">1</td><td class="mono">100</td><td class="mono">1×3 = 3 bits</td></tr>
+          <tr class="char-row" data-char="C"><td>C</td><td class="mono">6</td><td class="mono">0</td><td class="mono">6×1 = 6 bits</td></tr>
+          <tr class="char-row" data-char="D"><td>D</td><td class="mono">3</td><td class="mono">101</td><td class="mono">3×3 = 9 bits</td></tr>
+          <tr><td style="color:var(--text-sec)">—</td><td class="mono" style="color:var(--text-sec)">15</td><td style="color:var(--text-sec)">—</td><td class="mono" style="color:var(--text-sec)">28 bits</td></tr>
+        </tbody>
+      </table>
+      <div class="table-footer">
+        4×8 = 32 bits (tree overhead) + 15 bits + 28 bits = 75 bits total vs 120 bits unencoded
+      </div>
+    </div>
+
+  </div><!-- /rightContent -->
+
+  <!-- COMPRESSOR -->
+  <section id="compressorSection">
+    <div class="section-label">PRACTICAL APPLICATION</div>
+    <h2>File Compressor</h2>
+    <p class="comp-sub">Huffman encoding applied to real files. Upload a file, compress it, observe the entropy reduction.</p>
+    <div class="comp-grid" id="compGrid"></div>
+  </section>
+
+</div><!-- /app -->
+
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   CONSTANTS
+═══════════════════════════════════════════════════════════════ */
+const CHARS = 'BCAADDDCCACACA'.split('').concat(['C']);
+const INPUT_STRING = ['B','C','A','A','D','D','D','C','C','A','C','A','C','A','C'];
+
+const NODE_COLORS = {A:'#A855F7',B:'#EF4444',C:'#3B82F6',D:'#F59E0B','*':'#6B7280'};
+
+// Tree layout (viewBox 0 0 600 500)
+const NODES = {
+  root: {id:'root',cx:300,cy:62,freq:15,label:'15',type:'internal'},
+  C:    {id:'C',  cx:110,cy:165,freq:6, label:'C', type:'leaf',char:'C'},
+  int9: {id:'int9',cx:440,cy:165,freq:9, label:'9', type:'internal'},
+  int4: {id:'int4',cx:345,cy:270,freq:4, label:'4', type:'internal'},
+  A:    {id:'A',  cx:545,cy:270,freq:5, label:'A', type:'leaf',char:'A'},
+  B:    {id:'B',  cx:265,cy:370,freq:1, label:'B', type:'leaf',char:'B'},
+  D:    {id:'D',  cx:425,cy:370,freq:3, label:'D', type:'leaf',char:'D'},
+};
+
+const EDGES = [
+  {id:'eRC', from:'root',to:'C',   label:'0',side:'left'},
+  {id:'eRI', from:'root',to:'int9',label:'1',side:'right'},
+  {id:'eI9I4',from:'int9',to:'int4',label:'0',side:'left'},
+  {id:'eI9A', from:'int9',to:'A',  label:'1',side:'right'},
+  {id:'eI4B', from:'int4',to:'B',  label:'0',side:'left'},
+  {id:'eI4D', from:'int4',to:'D',  label:'1',side:'right'},
+];
+
+// Path highlight data (nodes + edges for each character)
+const PATHS = {
+  C:{nodes:['root','C'],         edges:['eRC']},
+  A:{nodes:['root','int9','A'],  edges:['eRI','eI9A']},
+  B:{nodes:['root','int9','int4','B'],edges:['eRI','eI9I4','eI4B']},
+  D:{nodes:['root','int9','int4','D'],edges:['eRI','eI9I4','eI4D']},
+};
+
+const R = 22; // node radius px
+
+/* ═══════════════════════════════════════════════════════════════
+   HERO SETUP
+═══════════════════════════════════════════════════════════════ */
+(function buildHero(){
+  const sd = document.getElementById('stringDisplay');
+  INPUT_STRING.forEach(ch => {
+    const d = document.createElement('div');
+    d.className = 'char-cell';
+    d.textContent = ch;
+    sd.appendChild(d);
+  });
+})();
+
+document.getElementById('startBtn').addEventListener('click', startApp);
+
+function startApp(){
+  const hero = document.getElementById('hero');
+  hero.classList.add('hidden');
+  setTimeout(()=>{
+    hero.style.display='none';
+    const app = document.getElementById('app');
+    app.classList.add('active');
+    startTypewriter();
+    setupIntersectionObservers();
+    setupTableHover();
+    setupTreeExit();
+  },500);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SVG TREE RENDERER
+═══════════════════════════════════════════════════════════════ */
+const svg = document.getElementById('treeSvg');
+const defs = document.getElementById('svgDefs');
+const edgesG = document.getElementById('edgesGroup');
+const labelsG = document.getElementById('labelsGroup');
+const nodesG = document.getElementById('nodesGroup');
+
+const renderedNodes = new Set();
+const renderedEdges = new Set();
+
+function nodeColor(nid){
+  const n = NODES[nid];
+  if(n.type==='leaf') return NODE_COLORS[n.char];
+  return NODE_COLORS['*'];
+}
+
+function addGradient(edgeId, fromColor, toColor, x1,y1,x2,y2){
+  const grad = document.createElementNS('http://www.w3.org/2000/svg','linearGradient');
+  grad.id = 'grad_'+edgeId;
+  grad.setAttribute('gradientUnits','userSpaceOnUse');
+  grad.setAttribute('x1',x1); grad.setAttribute('y1',y1);
+  grad.setAttribute('x2',x2); grad.setAttribute('y2',y2);
+  const s1 = document.createElementNS('http://www.w3.org/2000/svg','stop');
+  s1.setAttribute('offset','0%'); s1.setAttribute('stop-color',fromColor);
+  const s2 = document.createElementNS('http://www.w3.org/2000/svg','stop');
+  s2.setAttribute('offset','100%'); s2.setAttribute('stop-color',toColor);
+  grad.appendChild(s1); grad.appendChild(s2);
+  defs.appendChild(grad);
+}
+
+function addEdgeToSVG(edgeDef){
+  if(renderedEdges.has(edgeDef.id)) return;
+  renderedEdges.add(edgeDef.id);
+  const fn = NODES[edgeDef.from], tn = NODES[edgeDef.to];
+  const childColor = nodeColor(edgeDef.to);
+  const parentColor = nodeColor(edgeDef.from);
+  // Gradient: from child color → parent color (draw line child→parent direction)
+  addGradient(edgeDef.id, childColor, parentColor, tn.cx, tn.cy, fn.cx, fn.cy);
+  const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+  line.id = edgeDef.id;
+  line.setAttribute('x1',fn.cx); line.setAttribute('y1',fn.cy);
+  line.setAttribute('x2',tn.cx); line.setAttribute('y2',tn.cy);
+  line.setAttribute('stroke','url(#grad_'+edgeDef.id+')');
+  line.setAttribute('stroke-width','1.5');
+  line.classList.add('edge-path');
+  // Animate draw
+  const len = Math.hypot(tn.cx-fn.cx, tn.cy-fn.cy);
+  line.setAttribute('stroke-dasharray',len);
+  line.setAttribute('stroke-dashoffset',len);
+  edgesG.appendChild(line);
+  // Animate
+  requestAnimationFrame(()=>{
+    line.style.transition='stroke-dashoffset 400ms ease-in-out';
+    line.setAttribute('stroke-dashoffset','0');
+  });
+
+  // Edge label
+  const mx = (fn.cx+tn.cx)/2, my = (fn.cy+tn.cy)/2;
+  const offset = edgeDef.side==='left' ? -10 : 10;
+  const txt = document.createElementNS('http://www.w3.org/2000/svg','text');
+  txt.id = 'lbl_'+edgeDef.id;
+  txt.setAttribute('x', mx+offset); txt.setAttribute('y', my+5);
+  txt.setAttribute('fill','#FFFFFF');
+  txt.setAttribute('font-family','Space Mono,monospace');
+  txt.setAttribute('font-size','11');
+  txt.setAttribute('text-anchor','middle');
+  txt.classList.add('edge-label');
+  txt.textContent = edgeDef.label;
+  labelsG.appendChild(txt);
+}
+
+function addNodeToSVG(nid, glowActive){
+  if(renderedNodes.has(nid)) return;
+  renderedNodes.add(nid);
+  const n = NODES[nid];
+  const color = nodeColor(nid);
+
+  // Outer: carries the id, position, and filter/glow — never animated
+  const outer = document.createElementNS('http://www.w3.org/2000/svg','g');
+  outer.id = 'node_'+nid;
+  outer.classList.add('node-outer');
+  outer.setAttribute('transform',`translate(${n.cx},${n.cy})`);
+
+  // Inner: animated (scale 0→1). Parent already translated to cx,cy so
+  // transform-origin 0 0 means scale from the node's own centre.
+  const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+  g.classList.add('node-group');
+
+  if(n.type==='leaf'){
+    const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    c.setAttribute('r',R); c.setAttribute('fill','#000000');
+    c.setAttribute('stroke',color); c.setAttribute('stroke-width','2');
+    g.appendChild(c);
+    const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('text-anchor','middle'); t.setAttribute('dominant-baseline','central');
+    t.setAttribute('fill',color); t.setAttribute('font-family','Space Mono,monospace');
+    t.setAttribute('font-size','14'); t.setAttribute('font-weight','700');
+    t.textContent = n.char;
+    g.appendChild(t);
+    const f = document.createElementNS('http://www.w3.org/2000/svg','text');
+    f.setAttribute('text-anchor','middle'); f.setAttribute('y', R+14);
+    f.setAttribute('fill','#FFFFFF'); f.setAttribute('font-family','Space Mono,monospace');
+    f.setAttribute('font-size','11');
+    f.textContent = n.freq;
+    g.appendChild(f);
+  } else {
+    const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    c.setAttribute('r',R);
+    c.setAttribute('fill',color+'33');
+    c.setAttribute('stroke',color); c.setAttribute('stroke-width','2');
+    g.appendChild(c);
+    const t = document.createElementNS('http://www.w3.org/2000/svg','text');
+    t.setAttribute('text-anchor','middle'); t.setAttribute('dominant-baseline','central');
+    t.setAttribute('fill','#FFFFFF'); t.setAttribute('font-family','Space Mono,monospace');
+    t.setAttribute('font-size','12');
+    t.textContent = n.freq;
+    g.appendChild(t);
+  }
+
+  outer.appendChild(g);
+  if(glowActive) applyGlow(outer, color);
+  nodesG.appendChild(outer);
+}
+
+function applyGlow(el, color){
+  el.style.filter=`drop-shadow(0 0 8px ${color}) drop-shadow(0 0 16px ${color})`;
+  el.style.animation='glowPulse 800ms ease-in-out infinite alternate';
+}
+
+function removeGlow(el){
+  el.style.filter='';
+  el.style.animation='';
+}
+
+function getNodeEl(nid){ return document.getElementById('node_'+nid); }
+function getEdgeEl(eid){ return document.getElementById(eid); }
+function getLblEl(eid){ return document.getElementById('lbl_'+eid); }
+
+/* ═══════════════════════════════════════════════════════════════
+   C CODE TOKENIZER & TYPEWRITER
+═══════════════════════════════════════════════════════════════ */
+const KEYWORDS = new Set(['int','char','void','struct','while','if','return','for','unsigned','NULL','sizeof']);
+
+function tokenize(code){
+  const tokens=[];
+  let i=0;
+  const n=code.length;
+  while(i<n){
+    // newline/whitespace
+    if(code[i]==='\n'){ tokens.push({t:'\n',c:'nm'}); i++; continue; }
+    // line comment
+    if(code[i]==='/'&&code[i+1]==='/'){
+      let j=i; while(j<n&&code[j]!=='\n') j++;
+      tokens.push({t:code.slice(i,j),c:'cm'}); i=j; continue;
+    }
+    // preprocessor
+    if(code[i]==='#'){
+      let j=i; while(j<n&&code[j]!=='\n') j++;
+      // Color #include as keyword, rest normal
+      tokens.push({t:code.slice(i,j),c:'kw'}); i=j; continue;
+    }
+    // char literal
+    if(code[i]==="'"){
+      let j=i+1;
+      while(j<n&&code[j]!=="'"){ if(code[j]==='\\')j++; j++; }
+      j++;
+      tokens.push({t:code.slice(i,j),c:'str'}); i=j; continue;
+    }
+    // string literal
+    if(code[i]==='"'){
+      let j=i+1;
+      while(j<n&&code[j]!=='"'){ if(code[j]==='\\')j++; j++; }
+      j++;
+      tokens.push({t:code.slice(i,j),c:'str'}); i=j; continue;
+    }
+    // identifier / keyword
+    if(/[a-zA-Z_]/.test(code[i])){
+      let j=i; while(j<n&&/\w/.test(code[j])) j++;
+      const word=code.slice(i,j);
+      // peek for (
+      let k=j; while(k<n&&(code[k]===' '||code[k]==='\t')) k++;
+      if(KEYWORDS.has(word)) tokens.push({t:word,c:'kw'});
+      else if(code[k]==='(') tokens.push({t:word,c:'fn'});
+      else tokens.push({t:word,c:'nm'});
+      i=j; continue;
+    }
+    // number
+    if(/[0-9]/.test(code[i])){
+      let j=i; while(j<n&&/[0-9]/.test(code[j])) j++;
+      tokens.push({t:code.slice(i,j),c:'nm'}); i=j; continue;
+    }
+    tokens.push({t:code[i],c:'nm'}); i++;
+  }
+  return tokens;
+}
+
+// Build flat char array: [{char, cls}]
+function tokensToChars(tokens){
+  const out=[];
+  tokens.forEach(({t,c})=>{ for(const ch of t) out.push({ch,c}); });
+  return out;
+}
+
+const C_CODE_SECTIONS = [
+  {
+    code:`#include <stdio.h>\n#include <stdlib.h>\n\nstruct MinHeapNode {\n    char data;\n    unsigned freq;\n    struct MinHeapNode *left, *right;\n};\n\nstruct MinHeap {\n    unsigned size;\n    unsigned capacity;\n    struct MinHeapNode** array;\n};\n`,
+    onComplete: ()=>showLeafNodes()
+  },
+  {
+    code:`\nstruct MinHeapNode* newNode(char data, unsigned freq) {\n    struct MinHeapNode* temp =\n        (struct MinHeapNode*)malloc(sizeof(struct MinHeapNode));\n    temp->left = temp->right = NULL;\n    temp->data = data;\n    temp->freq = freq;\n    return temp;\n}\n`,
+    onComplete: null
+  },
+  {
+    code:`\nvoid minHeapify(struct MinHeap* minHeap, int idx) {\n    int smallest = idx;\n    int left = 2 * idx + 1;\n    int right = 2 * idx + 2;\n    if (left < minHeap->size &&\n        minHeap->array[left]->freq < minHeap->array[smallest]->freq)\n        smallest = left;\n    if (right < minHeap->size &&\n        minHeap->array[right]->freq < minHeap->array[smallest]->freq)\n        smallest = right;\n    if (smallest != idx) {\n        struct MinHeapNode* t = minHeap->array[smallest];\n        minHeap->array[smallest] = minHeap->array[idx];\n        minHeap->array[idx] = t;\n        minHeapify(minHeap, smallest);\n    }\n}\n`,
+    onComplete: null
+  },
+  {
+    code:`\nstruct MinHeapNode* extractMin(struct MinHeap* minHeap) {\n    struct MinHeapNode* temp = minHeap->array[0];\n    minHeap->array[0] = minHeap->array[minHeap->size - 1];\n    --minHeap->size;\n    minHeapify(minHeap, 0);\n    return temp;\n}\n`,
+    onComplete: null
+  },
+  {
+    code:`\nvoid insertMinHeap(struct MinHeap* minHeap, struct MinHeapNode* node) {\n    ++minHeap->size;\n    int i = minHeap->size - 1;\n    while (i && node->freq < minHeap->array[(i-1)/2]->freq) {\n        minHeap->array[i] = minHeap->array[(i-1)/2];\n        i = (i-1)/2;\n    }\n    minHeap->array[i] = node;\n}\n`,
+    onComplete: null
+  },
+  {
+    code:`\nvoid buildHuffmanTree(char data[], int freq[], int size) {\n    struct MinHeapNode *left, *right, *top;\n    struct MinHeap* minHeap = createMinHeap(size);\n    for (int i = 0; i < size; i++)\n        insertMinHeap(minHeap, newNode(data[i], freq[i]));\n    buildMinHeap(minHeap);\n    while (minHeap->size != 1) {\n        left = extractMin(minHeap);\n`,
+    onComplete: ()=>showIter1()
+  },
+  {
+    code:`        right = extractMin(minHeap);\n        top = newNode('$', left->freq + right->freq);\n        top->left = left;\n        top->right = right;\n        insertMinHeap(minHeap, top);\n    }\n`,
+    onComplete: ()=>showIter2()
+  },
+  {
+    code:`    printCodes(extractMin(minHeap), arr, 0);\n}`,
+    onComplete: ()=>showRoot()
+  }
+];
+
+let typewriterDone = false;
+
+function startTypewriter(){
+  const cc = document.getElementById('codeContent');
+  const cur = document.getElementById('cursor');
+  let secIdx=0;
+
+  function typeSection(sec, done){
+    const chars = tokensToChars(tokenize(sec.code));
+    let i=0;
+    let curSpan=null, curCls=null;
+    function tick(){
+      if(i>=chars.length){
+        if(sec.onComplete) setTimeout(sec.onComplete, 300);
+        setTimeout(done, 600);
+        return;
+      }
+      const {ch,c} = chars[i];
+      if(c!==curCls){
+        curSpan=document.createElement('span');
+        curSpan.className=c;
+        cc.insertBefore(curSpan, cur);
+        curCls=c;
+      }
+      curSpan.textContent+=ch;
+      i++;
+      // Scroll code block
+      const cb=document.getElementById('codeBlock');
+      cb.scrollTop=cb.scrollHeight;
+      setTimeout(tick,18);
+    }
+    tick();
+  }
+
+  function nextSection(){
+    if(secIdx>=C_CODE_SECTIONS.length){ typewriterDone=true; return; }
+    typeSection(C_CODE_SECTIONS[secIdx++], nextSection);
+  }
+  nextSection();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TREE BUILD SEQUENCES
+═══════════════════════════════════════════════════════════════ */
+function delay(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+async function showLeafNodes(){
+  // B(1), D(3), A(5), C(6) appear 400ms apart
+  const order = ['B','D','A','C'];
+  for(const nid of order){
+    addNodeToSVG(nid, true);
+    await delay(400);
+  }
+  // glow fades after 2s
+  await delay(2000);
+  order.forEach(nid=>{
+    const el=getNodeEl(nid);
+    if(el) removeGlow(el);
+  });
+}
+
+async function showIter1(){
+  // Highlight B and D with glow
+  const bEl=getNodeEl('B'), dEl=getNodeEl('D');
+  if(bEl) applyGlow(bEl, NODE_COLORS.B);
+  if(dEl) applyGlow(dEl, NODE_COLORS.D);
+  await delay(600);
+  // Draw edges B→int4, D→int4
+  addNodeToSVG('int4', true);
+  await delay(200);
+  EDGES.filter(e=>e.to==='B'||e.to==='D').forEach(e=>addEdgeToSVG(e));
+  await delay(1000);
+  if(bEl) removeGlow(bEl);
+  if(dEl) removeGlow(dEl);
+  const i4=getNodeEl('int4');
+  if(i4) removeGlow(i4);
+}
+
+async function showIter2(){
+  // Highlight int4 and A
+  const i4=getNodeEl('int4'), aEl=getNodeEl('A');
+  if(i4) applyGlow(i4, NODE_COLORS['*']);
+  if(aEl) applyGlow(aEl, NODE_COLORS.A);
+  await delay(600);
+  // Show int9
+  addNodeToSVG('int9', true);
+  await delay(200);
+  EDGES.filter(e=>e.to==='int4'||e.to==='A').forEach(e=>addEdgeToSVG(e));
+  await delay(1000);
+  if(i4) removeGlow(i4);
+  if(aEl) removeGlow(aEl);
+  const i9=getNodeEl('int9');
+  if(i9) removeGlow(i9);
+}
+
+async function showRoot(){
+  // Highlight C and int9
+  const cEl=getNodeEl('C'), i9=getNodeEl('int9');
+  if(cEl) applyGlow(cEl, NODE_COLORS.C);
+  if(i9) applyGlow(i9, NODE_COLORS['*']);
+  await delay(600);
+  // Show root
+  addNodeToSVG('root', true);
+  await delay(200);
+  EDGES.filter(e=>e.from==='root').forEach(e=>addEdgeToSVG(e));
+  await delay(500);
+  if(cEl) removeGlow(cEl);
+  if(i9) removeGlow(i9);
+  // All nodes glow briefly
+  await delay(300);
+  Object.keys(NODES).forEach(nid=>{
+    const el=getNodeEl(nid);
+    if(el) applyGlow(el, nodeColor(nid));
+  });
+  await delay(1500);
+  Object.keys(NODES).forEach(nid=>{
+    const el=getNodeEl(nid);
+    if(el) removeGlow(el);
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   INTERSECTION OBSERVERS
+═══════════════════════════════════════════════════════════════ */
+function setupIntersectionObservers(){
+  const io = new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting) e.target.classList.add('vis');
+    });
+  },{threshold:0.2});
+
+  document.querySelectorAll('.step-item[data-obs],.fade-in').forEach(el=>io.observe(el));
+
+  // PQ rows
+  const pqIO = new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){
+        ['pq0','pq1','pq2','pq3'].forEach((id,idx)=>{
+          setTimeout(()=>{
+            const el=document.getElementById(id);
+            if(el) el.classList.add('vis');
+          },idx*200);
+        });
+        pqIO.disconnect();
+      }
+    });
+  },{threshold:0.3});
+  const pqSec=document.querySelector('.pq-section');
+  if(pqSec) pqIO.observe(pqSec);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TABLE ROW HOVER — PATH HIGHLIGHT
+═══════════════════════════════════════════════════════════════ */
+function setupTableHover(){
+  const allNodeIds = Object.keys(NODES);
+  const allEdgeIds = EDGES.map(e=>e.id);
+
+  function highlightPath(char){
+    const path = PATHS[char];
+    if(!path) return;
+    const pathNodeSet = new Set(path.nodes);
+    const pathEdgeSet = new Set(path.edges);
+
+    // Dim all
+    allNodeIds.forEach(nid=>{
+      const el=getNodeEl(nid);
+      if(!el) return;
+      if(pathNodeSet.has(nid)){
+        el.style.opacity='1';
+        applyGlow(el, nodeColor(nid));
+      } else {
+        el.style.opacity='0.15';
+        removeGlow(el);
+      }
+    });
+    allEdgeIds.forEach(eid=>{
+      const line=getEdgeEl(eid);
+      const lbl=getLblEl(eid);
+      if(pathEdgeSet.has(eid)){
+        if(line){ line.style.opacity='1'; }
+        if(lbl){ lbl.style.opacity='1'; lbl.style.transform='scale(1.2)'; lbl.style.transformOrigin='center'; }
+      } else {
+        if(line) line.style.opacity='0.1';
+        if(lbl){ lbl.style.opacity='0.1'; lbl.style.transform=''; }
+      }
+    });
+  }
+
+  function resetHighlight(){
+    allNodeIds.forEach(nid=>{
+      const el=getNodeEl(nid);
+      if(el){ el.style.opacity='1'; removeGlow(el); }
+    });
+    allEdgeIds.forEach(eid=>{
+      const line=getEdgeEl(eid);
+      const lbl=getLblEl(eid);
+      if(line) line.style.opacity='1';
+      if(lbl){ lbl.style.opacity='1'; lbl.style.transform=''; }
+    });
+  }
+
+  document.querySelectorAll('.char-row').forEach(row=>{
+    const ch = row.dataset.char;
+    row.addEventListener('mouseenter',()=>highlightPath(ch));
+    row.addEventListener('mouseleave',()=>resetHighlight());
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TREE EXIT — triggered when compressor enters view
+═══════════════════════════════════════════════════════════════ */
+function setupTreeExit(){
+  const compSec = document.getElementById('compressorSection');
+  const treePanel = document.getElementById('treePanel');
+  const rightContent = document.getElementById('rightContent');
+
+  // Bidirectional: exit when compressor enters, restore when it leaves
+  const exitIO = new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){
+        treePanel.classList.add('exiting');
+        rightContent.classList.add('expanded');
+      } else {
+        treePanel.classList.remove('exiting');
+        rightContent.classList.remove('expanded');
+      }
+    });
+  },{threshold:0.05});
+  exitIO.observe(compSec);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   HUFFMAN COMPRESSION — JS IMPLEMENTATION
+═══════════════════════════════════════════════════════════════ */
+class HuffNode{
+  constructor(v,f,l=null,r=null){this.v=v;this.f=f;this.l=l;this.r=r;}
+}
+
+class MinHeap{
+  constructor(){this.h=[];}
+  push(n){this.h.push(n);this._up(this.h.length-1);}
+  pop(){
+    const top=this.h[0];
+    const last=this.h.pop();
+    if(this.h.length){this.h[0]=last;this._dn(0);}
+    return top;
+  }
+  get size(){return this.h.length;}
+  _up(i){
+    while(i>0){
+      const p=(i-1)>>1;
+      if(this.h[p].f<=this.h[i].f) break;
+      [this.h[p],this.h[i]]=[this.h[i],this.h[p]]; i=p;
+    }
+  }
+  _dn(i){
+    const n=this.h.length;
+    while(true){
+      let s=i,l=2*i+1,r=2*i+2;
+      if(l<n&&this.h[l].f<this.h[s].f) s=l;
+      if(r<n&&this.h[r].f<this.h[s].f) s=r;
+      if(s===i) break;
+      [this.h[s],this.h[i]]=[this.h[i],this.h[s]]; i=s;
+    }
+  }
+}
+
+function buildTree(freqMap){
+  const heap=new MinHeap();
+  for(const [v,f] of freqMap) heap.push(new HuffNode(v,f));
+  if(heap.size===1){
+    const o=heap.pop();
+    return new HuffNode(null,o.f,o,null);
+  }
+  while(heap.size>1){
+    const l=heap.pop(), r=heap.pop();
+    heap.push(new HuffNode(null,l.f+r.f,l,r));
+  }
+  return heap.pop();
+}
+
+function genCodes(root){
+  const map=new Map();
+  function walk(n,code){
+    if(!n) return;
+    if(n.v!==null&&n.v!==undefined){ map.set(n.v, code||'0'); return; }
+    walk(n.l, code+'0'); walk(n.r, code+'1');
+  }
+  walk(root,''); return map;
+}
+
+function serTree(root){
+  const bits=[];
+  function walk(n){
+    if(!n) return;
+    if(n.v!==null&&n.v!==undefined){
+      bits.push(1);
+      const val = typeof n.v==='number'?n.v:n.v;
+      for(let i=7;i>=0;i--) bits.push((val>>i)&1);
+    } else {
+      bits.push(0); walk(n.l); walk(n.r);
+    }
+  }
+  walk(root); return bits;
+}
+
+function packBits(bits){
+  const bytes=new Uint8Array(Math.ceil(bits.length/8));
+  for(let i=0;i<bits.length;i++) if(bits[i]) bytes[i>>3]|=(1<<(7-(i&7)));
+  return bytes;
+}
+
+function huffCompress(inputBytes){
+  const freqMap=new Map();
+  for(const b of inputBytes) freqMap.set(b,(freqMap.get(b)||0)+1);
+  if(!freqMap.size) return {out:new Uint8Array(0),origSize:0,freqMap};
+
+  const root=buildTree(freqMap);
+  const codes=genCodes(root);
+
+  const treeBits=serTree(root);
+  const dataBits=[];
+  for(const b of inputBytes){
+    const code=codes.get(b)||'0';
+    for(const bit of code) dataBits.push(parseInt(bit));
+  }
+
+  const treeBytes=packBits(treeBits);
+  const dataBytes=packBits(dataBits);
+
+  // Header: [4B origLen][4B treeBitCount][treeBytes][4B dataBitCount][dataBytes]
+  const total=4+4+treeBytes.length+4+dataBytes.length;
+  const out=new Uint8Array(total);
+  let p=0;
+  const origLen=inputBytes.length;
+  out[p++]=(origLen>>24)&0xFF; out[p++]=(origLen>>16)&0xFF;
+  out[p++]=(origLen>>8)&0xFF;  out[p++]=origLen&0xFF;
+  const tbc=treeBits.length;
+  out[p++]=(tbc>>24)&0xFF; out[p++]=(tbc>>16)&0xFF;
+  out[p++]=(tbc>>8)&0xFF;  out[p++]=tbc&0xFF;
+  out.set(treeBytes,p); p+=treeBytes.length;
+  const dbc=dataBits.length;
+  out[p++]=(dbc>>24)&0xFF; out[p++]=(dbc>>16)&0xFF;
+  out[p++]=(dbc>>8)&0xFF;  out[p++]=dbc&0xFF;
+  out.set(dataBytes,p);
+
+  return {out, origSize:origLen, freqMap};
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   FILE COMPRESSOR UI
+═══════════════════════════════════════════════════════════════ */
+const CARD_TYPES=[
+  {label:'TEXT FILE',   accept:'.txt',                     binary:false},
+  {label:'IMAGE',       accept:'.png,.jpg,.jpeg,.bmp,.gif', binary:true},
+  {label:'PDF',         accept:'.pdf',                     binary:true},
+  {label:'VIDEO',       accept:'.mp4,.avi,.mov,.mkv',      binary:true},
+  {label:'AUDIO',       accept:'.mp3,.wav,.flac',          binary:true},
+];
+
+(function buildCompressorCards(){
+  const grid=document.getElementById('compGrid');
+  CARD_TYPES.forEach((ct,idx)=>{
+    const card=document.createElement('div');
+    card.className='comp-card';
+    card.innerHTML=`
+      <div class="card-type">${ct.label}</div>
+      <div class="drop-zone" id="dz${idx}">
+        <input type="file" accept="${ct.accept}" data-idx="${idx}">
+        <div class="dz-text">DROP FILE HERE<br>OR CLICK TO SELECT</div>
+      </div>
+      <div class="file-info" id="fi${idx}">
+        <div class="file-name-disp" id="fn${idx}"></div>
+        <div class="file-sz" id="fsz${idx}"></div>
+      </div>
+      <div class="prog-wrap" id="pw${idx}"><div class="prog-bar" id="pb${idx}"></div></div>
+      <div class="result-box" id="rb${idx}">
+        <div class="result-row"><span class="res-lbl">BEFORE</span><span class="res-val" id="rbefore${idx}"></span></div>
+        <div class="result-row"><span class="res-lbl">AFTER</span><span class="res-val" id="rafter${idx}"></span></div>
+        <div class="result-row"><span class="res-lbl">RATIO</span><span class="res-val" id="rratio${idx}"></span></div>
+        <div id="note${idx}"></div>
+        <a class="dl-btn" id="dlbtn${idx}" href="#" download>[ DOWNLOAD COMPRESSED FILE ]</a>
+        <div class="hist-wrap">
+          <svg id="hist${idx}" width="100%" height="80"></svg>
+          <div class="hist-lbl">BYTE FREQUENCY DISTRIBUTION</div>
+        </div>
+      </div>`;
+    grid.appendChild(card);
+
+    const dz=document.getElementById('dz'+idx);
+    const inp=card.querySelector('input[type="file"]');
+
+    dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag-over');});
+    dz.addEventListener('dragleave',()=>dz.classList.remove('drag-over'));
+    dz.addEventListener('drop',e=>{
+      e.preventDefault(); dz.classList.remove('drag-over');
+      if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0],idx,ct.binary);
+    });
+    inp.addEventListener('change',e=>{
+      if(e.target.files[0]) handleFile(e.target.files[0],idx,ct.binary);
+    });
+  });
+})();
+
+function fmtSize(bytes){
+  if(bytes<1024) return bytes+' B';
+  if(bytes<1048576) return (bytes/1024).toFixed(2)+' KB';
+  return (bytes/1048576).toFixed(2)+' MB';
+}
+
+function handleFile(file,idx,binary){
+  document.getElementById('fn'+idx).textContent=file.name;
+  document.getElementById('fsz'+idx).textContent=fmtSize(file.size);
+  document.getElementById('fi'+idx).classList.add('vis');
+  document.getElementById('rb'+idx).classList.remove('vis');
+  const pw=document.getElementById('pw'+idx);
+  const pb=document.getElementById('pb'+idx);
+  pw.classList.add('vis'); pb.style.width='0%';
+
+  const duration=Math.min(Math.max(file.size/500000*1000,500),8000);
+  const start=Date.now();
+  const progInt=setInterval(()=>{
+    const pct=Math.min((Date.now()-start)/duration*95,95);
+    pb.style.width=pct+'%';
+  },80);
+
+  const reader=new FileReader();
+  reader.onload=e=>{
+    clearInterval(progInt);
+    pb.style.width='100%';
+    setTimeout(()=>{
+      const bytes=new Uint8Array(e.target.result);
+      const {out,origSize,freqMap}=huffCompress(bytes);
+      showResult(idx,origSize,out,freqMap,file.name,bytes);
+      pw.classList.remove('vis');
+    },200);
+  };
+  binary ? reader.readAsArrayBuffer(file) : reader.readAsArrayBuffer(file);
+}
+
+function showResult(idx,origSize,compBytes,freqMap,filename,origBytes){
+  const compSize=compBytes.length;
+  const ratio=((origSize-compSize)/origSize*100);
+
+  document.getElementById('rbefore'+idx).textContent=fmtSize(origSize);
+  const afterEl=document.getElementById('rafter'+idx);
+  afterEl.textContent=fmtSize(compSize);
+  const ratioEl=document.getElementById('rratio'+idx);
+
+  if(ratio>5){ ratioEl.className='res-val green'; ratioEl.textContent=ratio.toFixed(1)+'% reduction'; }
+  else if(ratio>=1){ ratioEl.className='res-val yellow'; ratioEl.textContent=ratio.toFixed(1)+'% reduction'; }
+  else { ratioEl.className='res-val gray'; ratioEl.textContent=(ratio>=0?'+':'')+Math.abs(ratio).toFixed(1)+'% (no gain)'; }
+
+  const noteEl=document.getElementById('note'+idx);
+  if(ratio<0){
+    noteEl.innerHTML='<p class="already-note">Note: This file format already uses entropy encoding internally. Raw Huffman coding yields limited further compression.</p>';
+  } else {
+    noteEl.innerHTML='';
+  }
+
+  const blob=new Blob([compBytes],{type:'application/octet-stream'});
+  const url=URL.createObjectURL(blob);
+  const dlBtn=document.getElementById('dlbtn'+idx);
+  dlBtn.href=url;
+  dlBtn.download=filename.replace(/(\.[^.]+)?$/,'.huf');
+
+  drawHistogram(idx, freqMap, origBytes.length);
+  document.getElementById('rb'+idx).classList.add('vis');
+}
+
+function drawHistogram(idx, freqMap, total){
+  const svgEl=document.getElementById('hist'+idx);
+  const W=svgEl.clientWidth||300, H=80;
+  svgEl.setAttribute('viewBox',`0 0 ${W} ${H}`);
+  svgEl.innerHTML='';
+
+  // Build 256-bucket array
+  const counts=new Float32Array(256);
+  let maxC=0;
+  freqMap.forEach((f,v)=>{ if(v>=0&&v<256){ counts[v]=f; if(f>maxC) maxC=f; } });
+  if(!maxC) return;
+
+  const bw=W/256;
+  for(let i=0;i<256;i++){
+    if(!counts[i]) continue;
+    const h=(counts[i]/maxC)*(H-4);
+    const rect=document.createElementNS('http://www.w3.org/2000/svg','rect');
+    rect.setAttribute('x',i*bw); rect.setAttribute('y',H-h);
+    rect.setAttribute('width',Math.max(bw-0.5,0.5)); rect.setAttribute('height',h);
+    const opacity=0.3+0.7*(counts[i]/maxC);
+    rect.setAttribute('fill',`rgba(255,255,255,${opacity.toFixed(2)})`);
+    svgEl.appendChild(rect);
+  }
+}
+</script>
+</body>
+</html>
