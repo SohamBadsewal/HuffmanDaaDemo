@@ -1030,7 +1030,10 @@ function showResult(idx,origSize,compBytes,freqMap,filename,origBytes){
   const url=URL.createObjectURL(blob);
   const dlBtn=document.getElementById('dlbtn'+idx);
   dlBtn.href=url;
-  dlBtn.download=filename.replace(/(\.[^.]+)?$/,'.huf');
+  const extMatch = filename.match(/(\.[^.]+)$/);
+  const base = extMatch ? filename.slice(0, -extMatch[1].length) : filename;
+  const ext  = extMatch ? extMatch[1] : '';
+  dlBtn.download = base + '_compressed' + ext;
 
   drawHistogram(idx, freqMap, origBytes.length);
   document.getElementById('rb'+idx).classList.add('vis');
